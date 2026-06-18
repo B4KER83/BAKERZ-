@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BAKERZ DARTS</title>
+    <link rel="apple-touch-icon" href="bakerz-icon-180.png">
+    <link rel="icon" href="bakerz-icon-32.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="BAKERZ DARTS">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root { 
+            --bg: #000; 
+            --card: #111; 
+            --accent: #00e676; 
+            --warn: #ffa726; 
+            --btn: #161616; 
+            --vh: 1vh; /* Fallback */
+        }
+        
+        body { 
+            background-color: var(--bg); 
+            color: #fff; 
+            font-family: -apple-system, system-ui, sans-serif; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            /* Fix for mobile address bars */
+            height: calc(var(--vh, 1vh) * 100); /* fallback for older browsers */
+            height: 100dvh; /* modern browsers: tracks iOS toolbar show/hide automatically */
+            overflow: hidden; 
+            touch-action: none; 
+            -webkit-touch-callout: none; 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
+
+        #app { 
+            width: 100%; 
+            max-width: 500px; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative;
+            height: 100%;
+        }
+
+        @media (min-width: 600px) {
+            #app { max-width: none; }
+        }
+        
+        #settings-bar { display: flex; justify-content: space-between; padding: clamp(8px, 1.5vw, 16px); background: #0a0a0a; border-bottom: 1px solid #222; font-size: clamp(11px, 2vw, 18px); gap: 5px; }
+        .toggle-group { display: flex; align-items: center; gap: 4px; }
+        .toggle-btn { background: #222; border: 1px solid #444; color: #aaa; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: clamp(10px, 1.8vw, 16px); min-width: clamp(45px, 7vw, 76px);}
+        .toggle-btn.on { border-color: var(--accent); color: var(--accent); }
+
+        #scoreboard { display: flex; padding: 10px; gap: 10px; }
+        .player-card { flex: 1; background: var(--card); padding: clamp(8px, 1.8vw, 18px); border-radius: 12px; text-align: center; border: 2px solid #222; transition: 0.2s; }
+        .player-card.active { border-color: var(--accent); background: #051505; }
+        .score { font-size: clamp(40px, 9vw, 88px); font-weight: 800; margin: 2px 0; cursor: pointer; }
+        .player-name { color: var(--accent); font-size: clamp(11px, 2.6vw, 20px); font-weight: bold; text-transform: uppercase; margin-bottom: 4px; border-bottom: 1px solid #222; padding-bottom: 4px; cursor: pointer; white-space: nowrap; overflow: hidden;}
+        .avg { font-size: clamp(10px, 1.8vw, 16px); color: #888; margin-top: 2px; display: block; }
+
+        #status-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; }
+        #visit-line { color: var(--accent); font-size: clamp(18px, 3.2vw, 30px); font-weight: 700; height: clamp(22px, 4vw, 38px); text-transform: uppercase; }
+        #guide-line { color: var(--accent); font-size: clamp(24px, 4.5vw, 42px); font-weight: 900; height: clamp(32px, 5.5vw, 52px); text-transform: uppercase; margin-top: 5px; text-align: center; }
+        
+        .dart-slots { display: flex; gap: 8px; margin-top: 10px; }
+        .dart { width: clamp(55px, 10vw, 90px); height: clamp(35px, 6vw, 55px); border: 1px solid #333; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: #080808; font-size: clamp(16px, 2.8vw, 26px); font-weight: bold; color: #666; }
+        .dart.filled { color: #fff; background: #1a1a1a; border-color: #555; }
+
+        /* Keypads Containers */
+        #input-wrapper {
+            background: #0a0a0a;
+            border-top: 1px solid #222;
+            padding: 10px 10px calc(15px + env(safe-area-inset-bottom));
+        }
+
+        #keypad { display: none; }
+        .button-row { display: flex; gap: 6px; margin-bottom: 6px; }
+        button { flex: 1; background: #1c1c1c; color: white; border: none; border-radius: 8px; padding: 14px 0; cursor: pointer; font-weight: bold; font-size: clamp(14px, 2.6vw, 26px); -webkit-tap-highlight-color: transparent; }
+        .mod-btn.selected { background: var(--warn); color: #000; }
+        #grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+        .num-btn { aspect-ratio: 1.2; font-size: clamp(18px, 3.2vw, 30px); background: var(--btn); }
+        #simple-grid .num-btn { aspect-ratio: 2; }
+        .num-btn.flash { background: #fff; color: #000; }
+        .action-row { display: flex; gap: 8px; margin-top: 8px; }
+
+        #simple-input-container { display: flex; flex-direction: column; gap: 8px; }
+        #simple-display { background: #111; font-size: clamp(36px, 7vw, 72px); text-align: center; padding: 10px; border-radius: 8px; border: 1px solid #333; color: var(--accent); min-height: 44px; }
+        #simple-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        #simple-grid.disabled-grid { opacity: 0.4; pointer-events: none; }
+
+        #modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .modal-content { background: #111; padding: clamp(20px, 4vw, 40px); border: 2px solid var(--accent); border-radius: 20px; width: 80%; max-width: 480px; }
+        .reset-btn { background: var(--accent); color: #000; padding: clamp(12px, 2.5vw, 22px) 30px; border-radius: 10px; font-weight: bold; font-size: clamp(14px, 2.6vw, 22px); margin-top: 20px; border: none; width: 100%; }
+
+        #footer { text-align: center; font-size: clamp(10px, 1.6vw, 15px); color: #555; letter-spacing: 0.5px; padding: 5px 0 calc(5px + env(safe-area-inset-bottom)); background: #0a0a0a; border-top: 1px solid #1a1a1a; flex-shrink: 0; }
+
+        #bot-board-screen { display: none; flex-grow: 1; min-height: 0; overflow: hidden; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #000; }
+        #bot-board-title { color: var(--accent); font-weight: 900; font-size: clamp(16px, 3vw, 28px); letter-spacing: 1px; text-transform: uppercase; }
+        #bot-hit-line { color: #fff; font-weight: 900; font-size: clamp(20px, 4vw, 36px); letter-spacing: 1px; text-transform: uppercase; min-height: 26px; text-align: center; }
+        #dartboard-svg { width: 94%; max-width: 94vw; max-height: 60vh; height: auto; }
+        @keyframes dotPop { from { opacity: 0; } to { opacity: 1; } }
+        .dart-dot { fill: #ff1744; stroke: #fff; stroke-width: 0.8; animation: dotPop 0.2s ease forwards; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+<div id="app">
+
+    <img src="Bakerz.jpg" alt="Bakerz Header" style="width:100%; display:block; margin:0 auto; max-height: 15dvh; object-fit: contain; cursor:pointer;" onclick="showResetConfirm()">
+
+    <div id="settings-bar">
+        <div class="toggle-group">GUIDE: <button id="toggle-guide" class="toggle-btn on" onclick="toggleGuide()">ON</button></div>
+        <div class="toggle-group">MODE: <button id="toggle-mode" class="toggle-btn" onclick="toggleMode()">SIMPLE</button></div>
+        <div class="toggle-group">BOT: <button id="toggle-bot" class="toggle-btn" onclick="toggleBotOnOff()">OFF</button></div>
+        <div class="toggle-group" id="bot-level-group" style="display:none;">LVL: <button id="bot-level-btn" class="toggle-btn on" onclick="increaseBotLevel()">1</button></div>
+    </div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <div style="color:var(--accent); font-size:clamp(22px,4vw,36px); font-weight:900; margin-bottom:20px;">GAME SHOT</div>
+            <div style="font-size:clamp(18px,3.2vw,28px); margin:20px 0;">WINNER: <span id="win-name" style="color:#fff"></span></div>
+            <div id="modal-avgs" style="font-size:clamp(13px,2.2vw,20px); color:#aaa; margin-bottom:10px; line-height:1.6;"></div>
+            <button class="reset-btn" onclick="resetGame(true)">START NEW LEG</button>
+            <button class="reset-btn" style="background:#222; color:var(--accent); border:1px solid var(--accent); margin-top:10px;" onclick="resetGame('total')">NEW MATCH</button>
+        </div>
+    </div>
+
+    <div id="reset-confirm-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:101; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+        <div class="modal-content" style="max-width:320px;">
+            <div style="color:var(--accent); font-size:clamp(18px,3.5vw,30px); font-weight:900; margin-bottom:24px;">RESET GAME?</div>
+            <div style="display:flex; gap:10px;">
+                <button class="reset-btn" style="background:#222; color:#fff; border:1px solid #444;" onclick="hideResetConfirm()">NO</button>
+                <button class="reset-btn" onclick="confirmHeaderReset()">YES</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scoreboard">
+        <div id="p0-card" class="player-card active">
+            <div class="player-name" id="p0-name" onclick="editName(0)">PLAYER 1 (0)</div>
+            <div class="score" id="p0-score" onclick="setGameType()">501</div>
+            <div class="avg" id="p0-avg">AVG: 0.00</div>
+        </div>
+        <div id="p1-card" class="player-card">
+            <div class="player-name" id="p1-name" onclick="editName(1)">PLAYER 2 (0)</div>
+            <div class="score" id="p1-score" onclick="setGameType()">501</div>
+            <div class="avg" id="p1-avg">AVG: 0.00</div>
+        </div>
+    </div>
+
+    
+    <div id="status-area">
+        <div id="visit-line"></div>
+        <div id="guide-line"></div>
+        <div class="dart-slots" id="slots-ui" style="visibility: hidden;">
+            <div id="dart-0" class="dart"></div>
+            <div id="dart-1" class="dart"></div>
+            <div id="dart-2" class="dart"></div>
+        </div>
+    </div>
+
+    <div id="input-wrapper">
+        <div id="keypad">
+            <div class="button-row">
+                <button id="mod-S" class="mod-btn selected" onclick="setMod('S')">SINGLE</button>
+                <button id="mod-D" class="mod-btn" onclick="setMod('D')">DOUBLE</button>
+                <button id="mod-T" class="mod-btn" onclick="setMod('T')">TREBLE</button>
+            </div>
+            <div id="grid"></div>
+            <div class="button-row" style="margin-top:6px;">
+                <button onclick="handleInput(25, 'S')">25</button>
+                <button onclick="handleInput(50, 'D')">BULL</button>
+                <button style="background:#400" onclick="handleInput(0, 'M')">MISS</button>
+            </div>
+            <div class="action-row">
+                <button style="background:#333" onclick="undo()">UNDO</button>
+                <button style="background:#1b5e20; flex:2" onclick="endTurn()">END TURN</button>
+            </div>
+        </div>
+
+        <div id="simple-input-container">
+            <div id="simple-display">0</div>
+            <div id="simple-grid">
+                <button class="num-btn" onclick="pressSimple(1,this)">1</button>
+                <button class="num-btn" onclick="pressSimple(2,this)">2</button>
+                <button class="num-btn" onclick="pressSimple(3,this)">3</button>
+                <button class="num-btn" onclick="pressSimple(4,this)">4</button>
+                <button class="num-btn" onclick="pressSimple(5,this)">5</button>
+                <button class="num-btn" onclick="pressSimple(6,this)">6</button>
+                <button class="num-btn" onclick="pressSimple(7,this)">7</button>
+                <button class="num-btn" onclick="pressSimple(8,this)">8</button>
+                <button class="num-btn" onclick="pressSimple(9,this)">9</button>
+                <button style="background:#400" onclick="clearSimple()">CLR</button>
+                <button class="num-btn" onclick="pressSimple(0,this)">0</button>
+                <button style="background:#1b5e20" onclick="submitSimple()">ENTER</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bot-board-screen">
+        <div id="bot-hit-line"></div>
+        <div id="bot-board-title">BOT THROWING...</div>
+        <svg id="dartboard-svg" viewBox="0 0 220 220">
+            <g id="board-wedges"></g>
+            <g id="dart-dots"></g>
+        </svg>
+    </div>
+
+    <div id="footer">&copy; Bakerz Darts 2026 — All Rights Reserved</div>
+</div>
+
+<script>
+    // Logic for sizing
+    const setHeight = () => {
+        document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+    };
+    window.addEventListener('resize', setHeight);
+    setHeight();
+
+    const chart = {
+        170:"T20 T20 BULL",167:"T20 T19 BULL",164:"T20 T18 BULL",161:"T20 T17 BULL",160:"T20 T20 D20",158:"T20 T20 D19",157:"T20 T19 D20",156:"T20 T20 D18",155:"T20 T19 D19",154:"T20 T18 D20",
+        153:"T20 T19 D18",152:"T20 T20 D16",151:"T20 T17 D20",150:"T20 T18 D18",149:"T20 T19 D16",148:"T20 T20 D14",147:"T20 T17 D18",146:"T20 T18 D16",145:"T20 T19 D14",144:"T20 T20 D12",
+        143:"T20 T17 D16",142:"T20 T14 D20",141:"T20 T19 D12",140:"T20 T20 D10",139:"T20 T13 D20",138:"T20 T18 D12",137:"T20 T15 D16",136:"T20 T20 D8",135:"T20 T15 D15",134:"T20 T14 D16",
+        133:"T20 T19 D8",132:"T20 T16 D12",131:"T20 T13 D16",130:"T20 T20 D5",129:"T19 T16 D12",128:"T18 T14 D16",127:"T20 T17 D8",126:"T19 T19 D6",125:"T18 T13 D16",124:"T20 T16 D8",
+        123:"T19 T16 D9",122:"T18 T20 D4",121:"T20 T11 D14",120:"T20 20 D20",119:"T19 T12 D13",118:"T20 18 D20",117:"T20 17 D20",116:"T19 19 D20",115:"T19 18 D20",114:"T20 14 D20",
+        113:"T19 16 D20",112:"T20 20 D16",111:"T19 14 D20",110:"T20 10 D20",109:"T20 9 D20",108:"T20 16 D16",107:"T20 15 D16",106:"T20 6 D20",105:"T19 16 D16",104:"T16 16 D20",
+        103:"T19 6 D20",102:"T20 10 D16",101:"T20 9 D16",100:"T20 D20",99:"T19 10 D16",98:"T20 D19",97:"T19 D20",96:"T20 D18",95:"T19 D19",94:"T18 D20",
+        93:"T19 D18",92:"T20 D16",91:"T17 D20",90:"T20 D15",89:"T19 D16",88:"T20 D14",87:"T17 D18",86:"T18 D16",85:"T15 D20",84:"T20 D12",
+        83:"T17 D16",82:"T14 D20",81:"T19 D12",80:"T20 D10",79:"T19 D11",78:"T18 D12",77:"T19 D10",76:"T16 D14",75:"T17 D12",74:"T14 D16",
+        73:"T19 D8",72:"T16 D12",71:"T13 D16",70:"T18 D8",69:"T19 D6",68:"T16 D10",67:"T9 D20",66:"T10 D18",65:"T11 D16",64:"T16 D8",
+        63:"T17 D6",62:"T10 D16",61:"T15 D8",60:"20 D20",59:"19 D20",58:"18 D20",57:"17 D20",56:"16 D20",55:"15 D20",54:"14 D20",
+        53:"13 D20",52:"12 D20",51:"11 D20",50:"10 D20",49:"9 D20",48:"8 D20",47:"15 D16",46:"6 D20",45:"13 D16",44:"12 D16",43:"11 D16",42:"10 D16",41:"9 D16",
+        40:"D20",39:"7 D16",38:"D19",37:"5 D16",36:"D18",35:"3 D16",34:"D17",33:"1 D16",32:"D16",31:"15 D8",
+        30:"D15",29:"13 D8",28:"D14",27:"11 D8",26:"D13",25:"9 D8",24:"D12",23:"7 D8",22:"D11",21:"5 D8",
+        20:"D10",19:"3 D8",18:"D9",17:"1 D8",16:"D8",15:"7 D4",14:"D7",13:"5 D4",12:"D6",11:"3 D4",
+        10:"D5",9:"1 D4",8:"D4",7:"3 D2",6:"D3",5:"1 D2",4:"D2",3:"1 D1",2:"D1"
+    };
+
+    let startScore = 501;
+    const IMPOSSIBLE_3DART_SCORES = [179, 178, 176, 175, 173, 172, 169, 166, 163];
+    let players = [
+        {name:"PLAYER 1",score:501,totalPts:0,totalDarts:0, legs:0},
+        {name:"PLAYER 2",score:501,totalPts:0,totalDarts:0, legs:0}
+    ];
+    let currentIdx = 0, turnDarts = [], modifier = 'S', isGameOver = false;
+    let guideEnabled = true, isSimpleMode = true, simpleValue = "";
+
+    // ---- BOT PLAYER ----
+    let botEnabled = false, botLevel = 1, botThinking = false, p2OriginalName = "PLAYER 2";
+    let botTimeoutId = null, botJustBusted = false;
+
+    // Level 1 = rank beginner, Level 10 = elite pro (Luke Littler tier: ~100+ three-dart avg, ~50% checkout rate)
+    const BOT_LEVELS = {
+        1:  { avg: 22,  std: 14, checkout: 0.04, avoidBust: 0.25 },
+        2:  { avg: 30,  std: 14, checkout: 0.07, avoidBust: 0.30 },
+        3:  { avg: 40,  std: 14, checkout: 0.10, avoidBust: 0.40 },
+        4:  { avg: 50,  std: 15, checkout: 0.14, avoidBust: 0.50 },
+        5:  { avg: 60,  std: 15, checkout: 0.18, avoidBust: 0.60 },
+        6:  { avg: 70,  std: 15, checkout: 0.24, avoidBust: 0.70 },
+        7:  { avg: 80,  std: 15, checkout: 0.30, avoidBust: 0.80 },
+        8:  { avg: 88,  std: 16, checkout: 0.37, avoidBust: 0.88 },
+        9:  { avg: 96,  std: 16, checkout: 0.45, avoidBust: 0.93 },
+        10: { avg: 104, std: 17, checkout: 0.53, avoidBust: 0.97 }
+    };
+
+    function gaussianRandom(mean, stdDev) {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return mean + stdDev * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    const BOGEY_NUMBERS = [169, 168, 166, 165, 163, 162, 159];
+
+    // Nudges a score by 1-3 points (when skill allows) so the resulting remaining
+    // score isn't a bogey number the bot can never check out from.
+    function avoidBogeyLeave(score, remaining, avoidProb) {
+        let resultRemaining = remaining - score;
+        if (!BOGEY_NUMBERS.includes(resultRemaining)) return score;
+        if (Math.random() >= avoidProb) return score; // lower-skill bots don't always spot it
+        for (let delta of [-1, 1, -2, 2, -3, 3]) {
+            let candidate = score + delta;
+            if (candidate < 0 || candidate > 180) continue;
+            let newRemaining = remaining - candidate;
+            if (newRemaining < 0 || newRemaining === 1) continue;
+            if (!BOGEY_NUMBERS.includes(newRemaining)) return candidate;
+        }
+        return score; // couldn't find a clean adjustment, leave as-is
+    }
+
+    function botThrowScore(level, remaining) {
+        const s = BOT_LEVELS[level];
+
+        // On a finishable score - go for the checkout
+        if (remaining >= 2 && remaining <= 170 && chart[remaining]) {
+            if (Math.random() < s.checkout) return remaining; // CHECKOUT!
+            let maxSafe = remaining - 2;
+            if (maxSafe <= 0) return 0;
+            let frac = 0.2 + Math.random() * 0.5;
+            let missScore = Math.max(0, Math.min(maxSafe, Math.round(maxSafe * frac)));
+            return avoidBogeyLeave(missScore, remaining, s.avoidBust);
+        }
+
+        // Normal scoring visit
+        let score = Math.round(gaussianRandom(s.avg, s.std));
+        score = Math.max(0, Math.min(180, score));
+
+        // Try to avoid leaving a "dead" score of 1
+        if (remaining - score === 1) {
+            score += (Math.random() < s.avoidBust) ? -1 : 1;
+        }
+
+        // Try to avoid busting where possible
+        if (remaining - score < 0 && Math.random() < s.avoidBust) {
+            score = Math.max(0, remaining - 2);
+        }
+
+        score = Math.max(0, Math.min(180, score));
+        return avoidBogeyLeave(score, remaining, s.avoidBust);
+    }
+
+    function botPlay() {
+        if (isGameOver || !botEnabled) return;
+        let p = players[1];
+        let remaining = p.score;
+        let botScore = botThrowScore(botLevel, remaining);
+        botJustBusted = false;
+
+        if (remaining - botScore === 0) {
+            p.score = 0; p.totalPts += botScore; p.totalDarts += 3;
+            p.legs++;
+            showWinScreen();
+        } else if (remaining - botScore < 2) {
+            p.totalDarts += 3;
+            currentIdx = 0;
+            botJustBusted = true;
+        } else {
+            p.score -= botScore; p.totalPts += botScore; p.totalDarts += 3;
+            currentIdx = 0;
+        }
+    }
+
+    function cancelBotTurn() {
+        if (botTimeoutId) {
+            clearTimeout(botTimeoutId);
+            botTimeoutId = null;
+        }
+        botThinking = false;
+        hideBotBoard();
+    }
+
+    // ---- DARTBOARD VISUALIZATION (decorative simulation of where the bot's darts land) ----
+    const SECTORS = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+    const BOARD_CX = 110, BOARD_CY = 110;
+    const R_BULL_IN = 3.5, R_BULL_OUT = 8.9, R_TRIPLE_IN = 55.3, R_TRIPLE_OUT = 59.8, R_DOUBLE_IN = 90.6, R_DOUBLE_OUT = 95;
+
+    function polarToXY(r, angleDeg) {
+        const a = angleDeg * Math.PI / 180;
+        return [BOARD_CX + r * Math.cos(a), BOARD_CY + r * Math.sin(a)];
+    }
+
+    function sectorAngle(num) {
+        const idx = SECTORS.indexOf(num);
+        return idx < 0 ? 0 : (-90 + idx * 18);
+    }
+
+    function targetForLabel(label) {
+        if (!label || label === 'M') return { angle: Math.random() * 360, radius: R_DOUBLE_OUT + 8 + Math.random() * 8 };
+        if (label === 'BULL') return { angle: 0, radius: R_BULL_IN * 0.4 };
+        if (label === '25') return { angle: 0, radius: (R_BULL_IN + R_BULL_OUT) / 2 };
+        let ring = 'S', numStr = label;
+        if (label[0] === 'T') { ring = 'T'; numStr = label.slice(1); }
+        else if (label[0] === 'D') { ring = 'D'; numStr = label.slice(1); }
+        const num = parseInt(numStr);
+        const angle = sectorAngle(num);
+        let radius;
+        if (ring === 'T') radius = (R_TRIPLE_IN + R_TRIPLE_OUT) / 2;
+        else if (ring === 'D') radius = (R_DOUBLE_IN + R_DOUBLE_OUT) / 2;
+        else radius = (R_TRIPLE_OUT + R_DOUBLE_IN) / 2;
+        return { angle, radius };
+    }
+
+    function jitterFor(level) {
+        const t = (11 - level) / 10; // 1.0 at level 1 (loose), 0.1 at level 10 (tight)
+        return { angleStd: 2 + t * 16, radiusStd: 2 + t * 13 };
+    }
+
+    function simulateDartPoint(label, level) {
+        const target = targetForLabel(label);
+        const j = jitterFor(level);
+        const angle = target.angle + gaussianRandom(0, j.angleStd);
+        let radius = target.radius + gaussianRandom(0, j.radiusStd);
+        radius = Math.max(0, Math.min(radius, R_DOUBLE_OUT + 14));
+        const [x, y] = polarToXY(radius, angle);
+        return { x, y };
+    }
+
+    function getBotDartLabels(remaining) {
+        if (remaining >= 2 && remaining <= 170 && chart[remaining]) {
+            return chart[remaining].split(' ').slice(0, 3);
+        }
+        return ['T20', 'T20', 'T20'];
+    }
+
+    function labelForPoint(x, y) {
+        const dx = x - BOARD_CX, dy = y - BOARD_CY;
+        const radius = Math.sqrt(dx * dx + dy * dy);
+        if (radius > R_DOUBLE_OUT) return 'MISS';
+        if (radius <= R_BULL_IN) return 'BULL';
+        if (radius <= R_BULL_OUT) return '25';
+        let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        let idx = Math.round((angle + 90) / 18);
+        idx = ((idx % 20) + 20) % 20;
+        const num = SECTORS[idx];
+        if (radius >= R_TRIPLE_IN && radius <= R_TRIPLE_OUT) return 'T' + num;
+        if (radius >= R_DOUBLE_IN) return 'D' + num;
+        return String(num);
+    }
+
+    function buildDartboard() {
+        const NS = 'http://www.w3.org/2000/svg';
+        const wedgesG = document.getElementById('board-wedges');
+        if (!wedgesG) return;
+
+        function wedgePath(rIn, rOut, a0, a1) {
+            const [x1, y1] = polarToXY(rOut, a0);
+            const [x2, y2] = polarToXY(rOut, a1);
+            const [x3, y3] = polarToXY(rIn, a1);
+            const [x4, y4] = polarToXY(rIn, a0);
+            return `M ${x1} ${y1} A ${rOut} ${rOut} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${rIn} ${rIn} 0 0 0 ${x4} ${y4} Z`;
+        }
+        function addWedge(rIn, rOut, a0, a1, fill) {
+            const p = document.createElementNS(NS, 'path');
+            p.setAttribute('d', wedgePath(rIn, rOut, a0, a1));
+            p.setAttribute('fill', fill);
+            wedgesG.appendChild(p);
+        }
+
+        SECTORS.forEach((num, i) => {
+            const center = -90 + i * 18, a0 = center - 9, a1 = center + 9;
+            const light = i % 2 === 0;
+            addWedge(R_BULL_OUT, R_TRIPLE_IN, a0, a1, light ? '#e8dcc0' : '#15110d');
+            addWedge(R_TRIPLE_IN, R_TRIPLE_OUT, a0, a1, light ? '#0a8a3c' : '#c2151c');
+            addWedge(R_TRIPLE_OUT, R_DOUBLE_IN, a0, a1, light ? '#e8dcc0' : '#15110d');
+            addWedge(R_DOUBLE_IN, R_DOUBLE_OUT, a0, a1, light ? '#0a8a3c' : '#c2151c');
+
+            const [lx, ly] = polarToXY(R_DOUBLE_OUT + 9, center);
+            const t = document.createElementNS(NS, 'text');
+            t.setAttribute('x', lx); t.setAttribute('y', ly);
+            t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'middle');
+            t.setAttribute('fill', '#999'); t.setAttribute('font-size', '9');
+            t.textContent = num;
+            wedgesG.appendChild(t);
+        });
+
+        const outerBull = document.createElementNS(NS, 'circle');
+        outerBull.setAttribute('cx', BOARD_CX); outerBull.setAttribute('cy', BOARD_CY);
+        outerBull.setAttribute('r', R_BULL_OUT); outerBull.setAttribute('fill', '#0a8a3c');
+        wedgesG.appendChild(outerBull);
+
+        const innerBull = document.createElementNS(NS, 'circle');
+        innerBull.setAttribute('cx', BOARD_CX); innerBull.setAttribute('cy', BOARD_CY);
+        innerBull.setAttribute('r', R_BULL_IN); innerBull.setAttribute('fill', '#c2151c');
+        wedgesG.appendChild(innerBull);
+    }
+
+    function showBotBoard(labels) {
+        document.getElementById('status-area').style.display = 'none';
+        document.getElementById('input-wrapper').style.display = 'none';
+        document.getElementById('bot-board-screen').style.display = 'flex';
+        const dotsLayer = document.getElementById('dart-dots');
+        const hitLine = document.getElementById('bot-hit-line');
+        dotsLayer.innerHTML = '';
+        hitLine.textContent = '';
+        let hits = [];
+        labels.forEach((label, i) => {
+            setTimeout(() => {
+                if (!botThinking) return; // turn was cancelled mid-animation
+                const pt = simulateDartPoint(label, botLevel);
+                const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
+                dot.setAttribute('r', 4.5);
+                dot.setAttribute('class', 'dart-dot');
+                dotsLayer.appendChild(dot);
+                hits.push(labelForPoint(pt.x, pt.y));
+                hitLine.textContent = hits.join(' ');
+            }, 250 + i * 400);
+        });
+    }
+
+    function hideBotBoard() {
+        const board = document.getElementById('bot-board-screen');
+        if (board) board.style.display = 'none';
+        const status = document.getElementById('status-area');
+        if (status) status.style.display = 'flex';
+        const wrapper = document.getElementById('input-wrapper');
+        if (wrapper) wrapper.style.display = 'block';
+    }
+    // ---- END DARTBOARD VISUALIZATION ----
+
+    function scheduleBotTurn() {
+        botThinking = true;
+        const labels = getBotDartLabels(players[1].score);
+        showBotBoard(labels);
+        render();
+        botTimeoutId = setTimeout(() => {
+            botTimeoutId = null;
+            botPlay();
+            botThinking = false;
+            hideBotBoard();
+            render();
+            if (botJustBusted) {
+                setTimeout(() => { botJustBusted = false; render(); }, 1200);
+            }
+        }, 2000 + Math.random() * 700);
+    }
+
+    function maybeStartBotTurn() {
+        if (botEnabled && !isGameOver && currentIdx === 1) {
+            scheduleBotTurn();
+        }
+    }
+
+    function forceSimpleMode() {
+        if (isSimpleMode) return;
+        isSimpleMode = true;
+        document.getElementById('keypad').style.display = 'none';
+        document.getElementById('simple-input-container').style.display = 'flex';
+        document.getElementById('slots-ui').style.visibility = 'hidden';
+        document.getElementById('toggle-mode').innerText = 'SIMPLE';
+        turnDarts = [];
+        setMod('S');
+    }
+
+    function toggleBotOnOff() {
+        botEnabled = !botEnabled;
+
+        if (botEnabled) {
+            forceSimpleMode();
+            p2OriginalName = players[1].name;
+            players[1].name = "BOT";
+        } else {
+            players[1].name = p2OriginalName;
+            cancelBotTurn();
+        }
+
+        const btn = document.getElementById('toggle-bot');
+        btn.innerText = botEnabled ? "ON" : "OFF";
+        btn.classList.toggle('on', botEnabled);
+
+        document.getElementById('bot-level-group').style.display = botEnabled ? 'flex' : 'none';
+        updateBotLevelBtn();
+
+        render();
+        maybeStartBotTurn();
+    }
+
+    function increaseBotLevel() {
+        if (!botEnabled) return;
+        botLevel = botLevel < 10 ? botLevel + 1 : 1;
+        updateBotLevelBtn();
+    }
+
+    function updateBotLevelBtn() {
+        const lvlBtn = document.getElementById('bot-level-btn');
+        lvlBtn.innerText = botLevel;
+        lvlBtn.title = botLevel === 10 ? "Luke Littler tier" : "";
+    }
+    // ---- END BOT PLAYER ----
+
+    function toggleGuide() {
+        guideEnabled = !guideEnabled;
+        const btn = document.getElementById('toggle-guide');
+        btn.innerText = guideEnabled ? "ON" : "OFF";
+        btn.classList.toggle('on', guideEnabled);
+        render();
+    }
+
+    function toggleMode() {
+        if (botEnabled) return; // locked to Simple Mode while the bot is active
+        isSimpleMode = !isSimpleMode;
+        document.getElementById('keypad').style.display = isSimpleMode ? 'none' : 'block';
+        document.getElementById('simple-input-container').style.display = isSimpleMode ? 'flex' : 'none';
+        document.getElementById('slots-ui').style.visibility = isSimpleMode ? 'hidden' : 'visible';
+        document.getElementById('toggle-mode').innerText = isSimpleMode ? "SIMPLE" : "DART-BY-DART";
+        resetTurn();
+    }
+
+    function editName(idx) {
+        if (botEnabled && idx === 1) return; // can't rename the bot
+        let n = prompt("Name:", players[idx].name);
+        if(n) { players[idx].name = n.toUpperCase(); render(); }
+    }
+
+    function setGameType() {
+        let val = prompt("Enter Game Score (e.g. 301, 501, 701):", startScore);
+        if (val && !isNaN(val)) {
+            startScore = parseInt(val);
+            resetGame(false);
+        }
+    }
+
+    function showResetConfirm() {
+        document.getElementById('reset-confirm-modal').style.display = 'flex';
+    }
+
+    function hideResetConfirm() {
+        document.getElementById('reset-confirm-modal').style.display = 'none';
+    }
+
+    function confirmHeaderReset() {
+        startScore = 501;
+        resetGame('total');
+        hideResetConfirm();
+    }
+
+    function setMod(m) {
+        modifier = m;
+        document.querySelectorAll('.mod-btn').forEach(b => b.classList.toggle('selected', b.id === 'mod-'+m));
+    }
+
+    function handleInput(val, forcedMod) {
+        if (turnDarts.length >= 3 || isGameOver) return;
+        let activeMod = forcedMod || modifier;
+        let pts = 0; let label = "";
+        
+        if (activeMod === 'M') { pts = 0; label = "M"; }
+        else if (val === 25) { pts = 25; label = "25"; }
+        else if (val === 50) { pts = 50; label = "BULL"; }
+        else {
+            let mult = (activeMod === 'D') ? 2 : (activeMod === 'T') ? 3 : 1;
+            pts = val * mult;
+            label = (activeMod === 'S' ? "" : activeMod) + val;
+        }
+
+        let p = players[currentIdx];
+        if (p.score - pts === 0 && (activeMod === 'D' || val === 50)) {
+            p.score = 0; p.totalPts += pts; p.totalDarts += (turnDarts.length + 1);
+            turnDarts.push({pts, label: "WIN"}); 
+            p.legs++;
+            render(); showWinScreen();
+        } else if (p.score - pts < 2) {
+            alert("BUST"); endTurn(true); 
+        } else {
+            p.score -= pts; turnDarts.push({pts, label});
+            setMod('S'); render();
+        }
+    }
+
+    function pressSimple(n, btn) {
+        if (botThinking) return;
+        if (btn) {
+            btn.classList.add('flash');
+            setTimeout(() => btn.classList.remove('flash'), 120);
+        }
+        if (simpleValue.length < 3) {
+            simpleValue += n;
+            document.getElementById('simple-display').innerText = simpleValue;
+        }
+    }
+    function clearSimple() {
+        simpleValue = "";
+        document.getElementById('simple-display').innerText = "0";
+    }
+    function submitSimple() {
+        if (botThinking) return;
+        let val = parseInt(simpleValue) || 0;
+        if (simpleValue === "" || (simpleValue === "0" && val === 0)) {
+            players[currentIdx].totalDarts += 3;
+            currentIdx = (currentIdx + 1) % 2;
+            clearSimple(); render();
+            maybeStartBotTurn();
+            return;
+        }
+        if (val > 180 || IMPOSSIBLE_3DART_SCORES.includes(val)) {
+            alert("That score isn't possible with 3 darts");
+            clearSimple();
+            return;
+        }
+        
+        let p = players[currentIdx];
+        if (p.score - val === 0) {
+            if (p.score <= 170 && chart[p.score]) {
+                p.score = 0; p.totalPts += val; p.totalDarts += 3;
+                p.legs++;
+                render(); showWinScreen();
+            } else {
+                alert("Invalid checkout — that score can't be finished on a double");
+                clearSimple();
+                return;
+            }
+        } else if (p.score - val < 2) {
+            alert("BUST"); p.totalDarts += 3; currentIdx = (currentIdx + 1) % 2;
+        } else {
+            p.score -= val; p.totalPts += val; p.totalDarts += 3;
+            currentIdx = (currentIdx + 1) % 2;
+        }
+        clearSimple(); render();
+        maybeStartBotTurn();
+    }
+
+    function endTurn(isBust = false) {
+        if (!isGameOver) {
+            let p = players[currentIdx];
+            if (!isBust) {
+                p.totalPts += turnDarts.reduce((a, b) => a + b.pts, 0);
+                p.totalDarts += turnDarts.length;
+            } else { p.totalDarts += 3; }
+            resetTurn();
+        }
+    }
+
+    function resetTurn() {
+        turnDarts = []; 
+        if (!isSimpleMode) currentIdx = (currentIdx + 1) % 2;
+        setMod('S'); 
+        render();
+    }
+
+    function undo() {
+        if (turnDarts.length > 0 && !isGameOver) {
+            let last = turnDarts.pop();
+            players[currentIdx].score += last.pts;
+            render();
+        }
+    }
+
+    function showWinScreen() {
+        isGameOver = true;
+        document.getElementById('win-name').innerText = players[currentIdx].name;
+        const avgsEl = document.getElementById('modal-avgs');
+        avgsEl.innerHTML = players.map(p => {
+            const avg = p.totalDarts > 0 ? (p.totalPts / p.totalDarts * 3).toFixed(2) : "0.00";
+            return `${p.name}: ${avg} AVG`;
+        }).join('<br>');
+        document.getElementById('modal').style.display = 'flex';
+    }
+
+    function resetGame(fullMatchReset = false) {
+        cancelBotTurn();
+        players.forEach(p => { 
+            p.score = startScore; 
+            p.totalPts = 0; 
+            p.totalDarts = 0; 
+            if (fullMatchReset === 'total') p.legs = 0; 
+        });
+        turnDarts = []; currentIdx = 0; isGameOver = false;
+        document.getElementById('modal').style.display = 'none';
+        render();
+    }
+
+    function render() {
+        let currentVisitTotal = 0;
+        players.forEach((p, i) => {
+            document.getElementById(`p${i}-name`).innerText = `${p.name} (${p.legs})`;
+            document.getElementById(`p${i}-score`).innerText = p.score;
+            let avg = p.totalDarts > 0 ? (p.totalPts / p.totalDarts * 3).toFixed(2) : "0.00";
+            let avgEl = document.getElementById(`p${i}-avg`);
+            avgEl.innerText = "AVG: " + avg;
+            avgEl.className = 'avg';
+            document.getElementById(`p${i}-card`).className = 'player-card' + (currentIdx === i ? ' active' : '');
+        });
+
+        turnDarts.forEach(d => currentVisitTotal += d.pts);
+        let visitText = "";
+        if (isSimpleMode) {
+            if (botEnabled && currentIdx === 1 && botThinking) visitText = "BOT'S TURN...";
+            else if (botEnabled && botJustBusted) visitText = "BOT BUST!";
+        } else {
+            visitText = `SCORE = ${currentVisitTotal}`;
+        }
+        document.getElementById('visit-line').innerText = visitText;
+
+        const simpleGrid = document.getElementById('simple-grid');
+        if (simpleGrid) simpleGrid.classList.toggle('disabled-grid', botThinking);
+        
+        let guide = "";
+        if (guideEnabled && !isGameOver) {
+            let score = players[currentIdx].score;
+            let dartsLeft = isSimpleMode ? 3 : (3 - turnDarts.length);
+            if (score <= 170 && chart[score]) {
+                let pathArray = chart[score].split(" ");
+                guide = pathArray.slice(0, dartsLeft).join(" ");
+            }
+        }
+        document.getElementById('guide-line').innerText = guide;
+
+        for (let i = 0; i < 3; i++) {
+            let slot = document.getElementById(`dart-${i}`);
+            if(slot) {
+                slot.innerText = turnDarts[i]?.label || "";
+                slot.className = 'dart' + (turnDarts[i] ? ' filled' : '');
+            }
+        }
+    }
+
+    const grid = document.getElementById('grid');
+    for (let i = 1; i <= 20; i++) {
+        let b = document.createElement('button');
+        b.className = 'num-btn'; b.innerText = i;
+        b.onclick = () => { b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 120); handleInput(i); };
+        grid.appendChild(b);
+    }
+    
+    window.onload = () => { buildDartboard(); render(); };
+</script>
+</body>
+</html>
